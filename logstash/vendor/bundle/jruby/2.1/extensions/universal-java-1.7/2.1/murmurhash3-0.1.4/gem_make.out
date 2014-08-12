@@ -1,0 +1,10 @@
+/home/jls/.rvm/rubies/jruby-1.7.12/bin/jruby extconf.rb 
+
+make "DESTDIR=" clean
+make: *** No rule to make target `clean'.  Stop.
+
+make "DESTDIR="
+#nothing to build
+
+make "DESTDIR=" install
+#nothing to build
