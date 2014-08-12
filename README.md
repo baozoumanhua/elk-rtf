@@ -16,7 +16,7 @@ kibana: 3.0.1（logstash集成）
 
 下载
 ---
-	git clone https://github.com/LYY/elk-rtf.git
+	git clone https://github.com/baozoumanhua/elk-rtf.git
 	
 
 运行elastichsearch
@@ -42,7 +42,7 @@ kibana: 3.0.1（logstash集成）
 按需修改`./configs/logstash-indexer-web.conf`。
 
 
-Author
-=======
-Copyright (c) 2014-2014 刘驭雨.  All Rights Reserved.
+作者
+====
+Copyright (c) 2014-2014 暴走漫画.  All Rights Reserved.
 Released under the [Artistic License](http://www.opensource.org/licenses/artistic-license-2.0.php).
