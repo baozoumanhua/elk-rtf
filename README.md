@@ -41,6 +41,12 @@ kibana: 3.0.1（logstash集成）
 ------
 按需修改`./configs/logstash-indexer-web.conf`。
 
+功能脚本
+-------
+在scripts目录下，提供了一些额外的功能脚本。
+
+`logstash-indexer`: logstash service化脚本，该脚本在ubuntu 14.04下测试通过，其他环境请自行测试。
+使用方法：放入/etc/init.d/下，执行`update-rc.d logstash-indexer defaults`。
 
 作者
 ====
