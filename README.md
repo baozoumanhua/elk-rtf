@@ -35,11 +35,11 @@ kibana: 3.0.1（logstash集成）
 命令：
 
 	cd logstash
-	./bin/logstash agent -f ../configs/logstash-indexer-web.conf web
+	./bin/logstash agent -f ../configs/logstash-indexer.conf web
 
 配置文件
 ------
-按需修改`./configs/logstash-indexer-web.conf`。
+按需修改`./configs/logstash-indexer.conf`。
 
 功能脚本
 -------
