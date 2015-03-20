@@ -8,16 +8,16 @@ elk(Elasticsearch, Logstash and Kibana) ready to fly
 
 各组件版本
 --------
-elasticsearch: 1.3.1
+elasticsearch: 1.4.4
 
 logstash: 1.4.2
 
-kibana: 3.0.1（logstash集成）
+kibana: 4.0.1
 
 下载
 ---
 	git clone https://github.com/baozoumanhua/elk-rtf.git
-	
+
 
 运行elastichsearch
 -----------------
@@ -27,7 +27,7 @@ kibana: 3.0.1（logstash集成）
 
 	cd elasticsearch
 	./bin/service/elasticsearch console
-	
+
 运行logstash以及kibana
 ---------------------
 现在logstash已经和kibana集成在一起了，提供了很方便的命令行工具，具体可参考[logstash-10-minute-walkthrough](http://logstash.net/docs/1.4.2/tutorials/10-minute-walkthrough/)。
@@ -35,7 +35,7 @@ kibana: 3.0.1（logstash集成）
 命令：
 
 	cd logstash
-	./bin/logstash agent -f ../configs/logstash-indexer.conf web
+	./bin/logstash agent -f ../configs/logstash-indexer.conf
 
 配置文件
 ------
