@@ -41,13 +41,13 @@
 					items: menuItems
 				})
 			});
-			this.el = $( this._main_template() );
+			this.el = $.joey( this._main_template() );
 			this.nameEl = this.el.find(".uiHeader-name");
 			this.statEl = this.el.find(".uiHeader-status");
 			this._clusterState = this.config.clusterState;
 			this._clusterState.on("data", function( state ) {
 				var shards = state.status._shards;
-				var colour = shards.failed > 0 ? "red" : ( shards.total > shards.successful ? "yellow" : "green" );
+				var colour = state.clusterHealth.status;
 				var name = state.clusterState.cluster_name;
 				this.nameEl.text( name );
 				this.statEl

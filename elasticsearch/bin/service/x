@@ -1,0 +1,23 @@
+#! /bin/sh
+OS_VER=`sw_vers | grep 'ProductVersion:' | grep -o '[0-9]*\.[0-9]*\.[0-9]*'`
+OS_VER="10.5.0"
+IFS=. VER_ARR=($OS_VER)
+if [[ ${VER_ARR[0]} -lt 10 ]]
+then
+    DIST_BITS="32"
+else
+    if [[ ${VER_ARR[0]} -eq 10 ]]
+    then
+        if [[ ${VER_ARR[1]} -lt 5 ]]
+        then
+            DIST_BITS="32"
+        else
+            DIST_BITS="64"
+        fi
+    else
+        DIST_BITS="64"
+    fi
+fi
+echo $DIST_BITS
+
+exit 0

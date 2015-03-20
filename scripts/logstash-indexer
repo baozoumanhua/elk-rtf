@@ -24,7 +24,7 @@ NICE_LEVEL="-n 19"
 start () {
 	#command="/usr/bin/nice $NICE_LEVEL $logstash_bin agent -f $logstash_conf --log $logstash_log web"
 	cmd="/usr/bin/nice"
-  cmd_opts="$NICE_LEVEL $logstash_bin agent -f $logstash_conf --log $logstash_log web"
+  cmd_opts="$NICE_LEVEL $logstash_bin agent -f $logstash_conf --log $logstash_log"
 	
   log_daemon_msg "Starting $mode" "$name"
 	if start-stop-daemon --start --quiet --oknodo --pidfile "$pid_file" -b -m --exec $cmd -- $cmd_opts; then

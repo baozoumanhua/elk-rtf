@@ -370,6 +370,28 @@
 	})());
 
 })( this.app );
+(function( app ) {
+
+	var ux = app.ns("ux");
+
+	var extend = ux.Observable.extend;
+	var instance = function() {
+		if( ! ("me" in this) ) {
+			this.me = new this();
+		}
+		return this.me;
+	};
+
+	ux.Singleton = ux.Observable.extend({});
+
+	ux.Singleton.extend = function() {
+		var Self = extend.apply( this, arguments );
+		Self.instance = instance;
+		return Self;
+	};
+
+})( this.app );
+
 (function( $, app ) {
 
 	var ux = app.ns("ux");
@@ -1180,20 +1202,40 @@
 
 })( this.app );
 (function( app ) {
-
+	
+	var ux = app.ns("ux");
 	var services = app.ns("services");
 
-	services.storage = (function() {
-		var storage = {};
-		return {
-			get: function(k) { try { return JSON.parse(localStorage[k] || storage[k]); } catch(e) { return null; } },
-			set: function(k, v) { v = JSON.stringify(v); localStorage[k] = v; storage[k] = v; }
-		};
-	})();
+	services.Preferences = ux.Singleton.extend({
+		init: function() {
+			this._storage = window.localStorage;
+			this._setItem("__version", 1 );
+		},
+		get: function( key ) {
+			return this._getItem( key );
+		},
+		set: function( key, val ) {
+			return this._setItem( key, val );
+		},
+		_getItem: function( key ) {
+			try {
+				return JSON.parse( this._storage.getItem( key ) );
+			} catch(e) {
+				console.warn( e );
+				return undefined;
+			}
+		},
+		_setItem: function( key, val ) {
+			try {
+				return this._storage.setItem( key, JSON.stringify( val ) );
+			} catch(e) {
+				console.warn( e );
+				return undefined;
+			}
+		}
+	});
 
 })( this.app );
-
-
 
 (function( $, app ) {
 
@@ -1206,7 +1248,7 @@
 
 	services.Cluster = ux.Class.extend({
 		defaults: {
-			base_uri: "http://localhost:9200/"
+			base_uri: null
 		},
 		init: function() {
 			this.base_uri = this.config.base_uri;
@@ -1261,13 +1303,14 @@
 			this.clusterNodes = null;
 		},
 		refresh: function() {
-			var self = this, clusterState, status, nodeStats, clusterNodes; 
+			var self = this, clusterState, status, nodeStats, clusterNodes, clusterHealth;
 			function updateModel() {
-				if( clusterState && status && nodeStats && clusterNodes ) {
+				if( clusterState && status && nodeStats && clusterNodes && clusterHealth ) {
 					this.clusterState = clusterState;
 					this.status = status;
 					this.nodeStats = nodeStats;
 					this.clusterNodes = clusterNodes;
+					this.clusterHealth = clusterHealth;
 					this.fire( "data", this );
 				}
 			}
@@ -1287,6 +1330,10 @@
 				clusterNodes = data;
 				updateModel.call( self );
 			});
+			this.cluster.get("_cluster/health", function( data ) {
+				clusterHealth = data;
+				updateModel.call( self );
+			});
 		},
 		_clusterState_handler: function(state) {
 			this.clusterState = state;
@@ -1303,6 +1350,10 @@
 		_clusterNodes_handler: function(nodes) {
 			this.clusterNodes = nodes;
 			this.redraw("clusterNodes");
+		},
+		_clusterHealth_handler: function(health) {
+			this.clusterHealth = health;
+			this.redraw("status");
 		}
 	});
 
@@ -1357,7 +1408,7 @@
 
 })( this.jQuery, this.joey, this.app );
 
-(function( $, app ) {
+(function( $, app, joey ) {
 
 	var ui = app.ns("ui");
 
@@ -1372,7 +1423,7 @@
 
 		init: function(parent) {
 			this._super();
-			this.el = $(this._main_template());
+			this.el = $.joey(this._main_template());
 			this.field = this.el.find("[name="+this.config.name+"]");
 			this.label = this.config.label;
 			this.require = this.config.require;
@@ -1405,7 +1456,7 @@
 
 	});
 
-})( this.jQuery, this.app );
+})( this.jQuery, this.app, this.joey );
 
 (function( app ) {
 
@@ -1561,7 +1612,7 @@
 				label: "\u00a0",
 				menu: this.menu
 			});
-			this.el = $(this._main_template());
+			this.el = $.joey(this._main_template());
 		},
 		remove: function() {
 			this.menu.remove();
@@ -1601,9 +1652,9 @@
 		init: function( parent ) {
 			this.config.label = i18n.text("General.RefreshResults");
 			this._super( parent );
-			this._doTimer( this.config.timer );
+			this.set( this.config.timer );
 		},
-		_doTimer: function( value ) {
+		set: function( value ) {
 			this.value = value;
 			window.clearInterval( this._timer );
 			if( this.value > 0 ) {
@@ -1614,7 +1665,7 @@
 			this._refresh_handler();
 		},
 		_select_handler: function( el, event ) {
-			this._doTimer( event.value );
+			this.set( event.value );
 			this.fire("change", this );
 		},
 		_refresh_handler: function() {
@@ -1644,7 +1695,7 @@
 		},
 		init: function(parent) {
 			this._super();
-			this.el = $(this._main_template());
+			this.el = $.joey(this._main_template());
 		},
 		_main_template: function() {
 			return { tag: "DIV", cls: "uiToolbar", children: [
@@ -1679,27 +1730,27 @@
 		init: function() {
 			this._super();
 		},
-		open: function(jEv) {
+		open: function( ev ) {
 			this.el
 				.css( { visibility: "hidden" } )
-				.appendTo( $(this.config.parent) )
-				.css( this._getPosition(jEv) )
+				.appendTo( this.config.parent )
+				.css( this._getPosition( ev ) )
 				.css( { zIndex: (this.shared.stack.length ? (+this.shared.stack[this.shared.stack.length - 1].el.css("zIndex") + 10) : 100) } )
 				.css( { visibility: "visible", display: "block" } );
 			this.shared.stack.remove(this);
 			this.shared.stack.push(this);
 			this._setModal();
-			$(document).bind("keyup", this._close_handler);
-			this.fire("open", { source: this, event: jEv } );
+			$(document).bind("keyup", this._close_handler );
+			this.fire("open", { source: this, event: ev } );
 			return this;
 		},
-		close: function(jEv) {
+		close: function() {
 			var index = this.shared.stack.indexOf(this);
 			if(index !== -1) {
 				this.shared.stack.splice(index, 1);
 				this.el.css( { left: "-2999px" } ); // move the dialog to the left rather than hiding to prevent ie6 rendering artifacts
 				this._setModal();
-				this.fire("close", { source: this,  event: jEv } );
+				this.fire("close", this );
 				if(this.config.autoRemove) {
 					this.remove();
 				}
@@ -1709,6 +1760,7 @@
 		// close the panel and remove it from the dom, destroying it (you can not reuse the panel after calling remove)
 		remove: function() {
 			this.close();
+			$(document).unbind("keyup", this._close_handler );
 			this._super();
 		},
 		// starting at the top of the stack, find the first panel that wants a modal and put it just underneath, otherwise remove the modal
@@ -1732,10 +1784,10 @@
 				.mod(function(s) { return Math.max(5, s); })  // make sure the panel is not off the edge of the window
 				.asOffset();                                  // and return it as a {top, left} object
 		},
-		_close_handler: function(jEv) {
-			if(jEv.type === "keyup" && jEv.keyCode !== 27) { return; } // press esc key to close
+		_close_handler: function( ev ) {
+			if( ev.type === "keyup" && ev.keyCode !== 27) { return; } // press esc key to close
 			$(document).unbind("keyup", this._close_handler);
-			this.close(jEv);
+			this.close( ev );
 		}
 	});
 
@@ -1756,7 +1808,7 @@
 			this._super();
 			this.body = $(this._body_template());
 			this.title = $(this._title_template());
-			this.el = $( this._main_template() );
+			this.el = $.joey( this._main_template() );
 			this.el.css( { width: this.config.width } );
 			this.dd = new app.ux.DragDrop({
 				pickupSelector: this.el.find(".uiPanel-titleBar"),
@@ -1918,7 +1970,7 @@
 			}
 		},
 		initElements: function(parent) {
-			this.el = $(this._main_template());
+			this.el = $.joey(this._main_template());
 			this.body = this.el.find(".uiTable-body");
 			this.headers = this.el.find(".uiTable-headers");
 			this.tools = this.el.find(".uiTable-tools");
@@ -1938,17 +1990,17 @@
 			}
 			this._scroll_handler();
 		},
-		_scroll_handler: function(jEv) {
+		_scroll_handler: function(ev) {
 			this.el.find(".uiTable-headers").scrollLeft(this.body.scrollLeft());
 		},
-		_dataClick_handler: function(jEv) {
-			var row = $(jEv.target).closest("TR");
+		_dataClick_handler: function(ev) {
+			var row = $(ev.target).closest("TR");
 			if(row.length) {
 				this.fire("rowClick", this, { row: row } );
 			}
 		},
-		_headerClick_handler: function(jEv) {
-			var header = $(jEv.target).closest("TH.uiTable-header-cell");
+		_headerClick_handler: function(ev) {
+			var header = $(ev.target).closest("TH.uiTable-header-cell");
 			if(header.length) {
 				this.fire("headerClick", this, { header: header, column: header.data("column"), dir: header.data("dir") });
 			}
@@ -1956,12 +2008,10 @@
 		_main_template: function() {
 			return { tag: "DIV", id: this.id(), css: { width: this.config.width + "px" }, cls: this._baseCls, children: [
 				{ tag: "DIV", cls: "uiTable-tools" },
-				{ tag: "DIV", cls: "uiTable-headers",
-					onClick: this._headerClick_handler
-				},
+				{ tag: "DIV", cls: "uiTable-headers", onclick: this._headerClick_handler },
 				{ tag: "DIV", cls: "uiTable-body",
-					onClick: this._dataClick_handler,
-					onScroll: this._scroll_handler,
+					onclick: this._dataClick_handler,
+					onscroll: this._scroll_handler,
 					css: { height: this.config.height + "px", width: this.config.width + "px" }
 				}
 			] };
@@ -2000,7 +2050,7 @@
 
 })( this.jQuery, this.app );
 
-( function( $, app ) {
+( function( $, app, joey ) {
 
 	var ui = app.ns("ui");
 
@@ -2021,10 +2071,10 @@
 				label: "Generate Download Link",
 				onclick: this._downloadLinkGenerator_handler
 			});
-			this._downloadLink = $( { tag: "A", text: "download", });
+			this._downloadLink = $.joey( { tag: "A", text: "download", });
 			this._downloadLink.hide();
 			this._csvText = this._csv_template( columns, results );
-			this.el = $( this._main_template() );
+			this.el = $.joey( this._main_template() );
 			this.attach( parent );
 		},
 		_downloadLinkGenerator_handler: function() {
@@ -2081,7 +2131,7 @@
 		}
 	});
 
-})( this.jQuery, this.app );
+})( this.jQuery, this.app, this.joey );
 
 (function( $, app ) {
 
@@ -2124,30 +2174,47 @@
 				return this['value']('null', 'null');
 			},
 			"array": function (value) {
-				var results = value.map(function(v) {
-					return { tag: "LI", cls: this.expando(v), children: [ this['parse'](v) ] };
+				var results = [];
+				var lastItem = value.length - 1;
+				value.forEach(function( v, i ) {
+					results.push({ tag: "LI", cls: this.expando(v), children: [ this['parse'](v) ] });
+					if( i !== lastItem ) {
+						results.push(",");
+					}
 				}, this);
 				return [ "[ ", ((results.length > 0) ? { tag: "UL", cls: "uiJsonPretty-array", children: results } : null), "]" ];
 			},
 			"object": function (value) {
 				var results = [];
-				for (var member in value) {
-					results.push({ tag: "LI", cls: this.expando(value[member]), children:  [ this['value']('name', member), ': ', this['parse'](value[member]) ] });
-				}
+				var keys = Object.keys( value );
+				var lastItem = keys.length - 1;
+				keys.forEach( function( key, i ) {
+					var children = [ this['value']( 'name', '"' + key + '"' ), ": ", this['parse']( value[ key ]) ];
+					if( i !== lastItem ) {
+						children.push(",");
+					}
+					results.push( { tag: "LI", cls: this.expando( value[ key ] ), children: children } );
+				}, this);
 				return [ "{ ", ((results.length > 0) ? { tag: "UL", cls: "uiJsonPretty-object", children: results } : null ),  "}" ];
 			},
 			"number": function (value) {
 				return this['value']('number', value.toString());
 			},
 			"string": function (value) {
-				return this['value']('string', value.toString());
+				if (/^(http|https|file):\/\/[^\s]+$/.test(value)) {
+					return this['link']( value );
+				} else {
+					return this['value']('string', '"' + value.toString() + '"');
+				}
 			},
 			"boolean": function (value) {
 				return this['value']('boolean', value.toString());
 			},
+			"link": function( value ) {
+					return this['value']("string", { tag: "A", href: value, target: "_blank", text: '"' + value + '"' } );
+			},
 			"value": function (type, value) {
 				if (/^(http|https|file):\/\/[^\s]+$/.test(value)) {
-					return this['value'](type, { tag: "A", href: value, target: "_blank", text: value } );
 				}
 				return { tag: "SPAN", cls: "uiJsonPretty-" + type, text: value };
 			}
@@ -2167,7 +2234,7 @@
 		},
 		init: function(parent) {
 			this._super();
-			this.el = $(this._main_template());
+			this.el = $.joey(this._main_template());
 			this.attach( parent );
 		},
 		_main_template: function() {
@@ -2177,7 +2244,7 @@
 			return { tag: "LABEL", cls: "uiPanelForm-field", children: [
 				{ tag: "DIV", cls: "uiPanelForm-label", children: [ field.label, ut.require_template(field) ] },
 				field
-			]}
+			]};
 		}
 	});
 
@@ -2243,21 +2310,21 @@
 		},
 		init: function() {
 			this._super();
-			this.el = $( this._main_template() );
+			this.el = $.joey( this._main_template() );
 			this.body = this.el.children(".uiSidebarSection-body");
 			this.config.open && ( this.el.addClass("shown") && this.body.css("display", "block") );
 		},
-		_showSection_handler: function(jEv) {
-			var shown = $(jEv.target).closest(".uiSidebarSection")
+		_showSection_handler: function( ev ) {
+			var shown = $( ev.target ).closest(".uiSidebarSection")
 				.toggleClass("shown")
 					.children(".uiSidebarSection-body").slideToggle(200, function() { this.fire("animComplete", this); }.bind(this))
 				.end()
 				.hasClass("shown");
 			this.fire(shown ? "show" : "hide", this);
 		},
-		_showHelp_handler: function(jEv) {
+		_showHelp_handler: function( ev ) {
 			new ui.HelpPanel({ref: this.config.help});
-			jEv.stopPropagation();
+			ev.stopPropagation();
 		},
 		_main_template: function() { return (
 			{ tag: "DIV", cls: "uiSidebarSection", children: [
@@ -2691,6 +2758,7 @@
 
 	var ui = app.ns("ui");
 	var ut = app.ns("ut");
+	var services = app.ns("services");
 
 	ui.AnyRequest = ui.Page.extend({
 		defaults: {
@@ -2701,8 +2769,9 @@
 		},
 		init: function(parent) {
 			this._super();
-			this.history = app.services.storage.get("anyRequestHistory") || [ { type: "POST", path: this.config.path, query : JSON.stringify(this.config.query), transform: this.config.transform } ];
-			this.el = $(this._main_template());
+			this.prefs = services.Preferences.instance();
+			this.history = this.prefs.get("anyRequest-history") || [ { type: "POST", path: this.config.path, query : JSON.stringify(this.config.query), transform: this.config.transform } ];
+			this.el = $.joey(this._main_template());
 			this.base_uriEl = this.el.find("INPUT[name=base_uri]");
 			this.pathEl = this.el.find("INPUT[name=path]");
 			this.typeEl = this.el.find("SELECT[name=method]");
@@ -2725,7 +2794,7 @@
 			this.dataEl.val(item.query);
 			this.transformEl.val(item.transform);
 		},
-		_request_handler: function(jEv) {
+		_request_handler: function( ev ) {
 			if(! this._validateJson_handler()) {
 				return;
 			}
@@ -2734,7 +2803,7 @@
 					query = JSON.stringify(JSON.parse(this.dataEl.val())),
 					transform = this.transformEl.val(),
 					base_uri = this.base_uriEl.val();
-			if(jEv && jEv.originalEvent) { // if the user click request
+			if( ev ) { // if the user click request
 				if(this.timer) {
 					window.clearTimeout(this.timer); // stop any cron jobs
 				}
@@ -2759,7 +2828,7 @@
 					transform: transform
 				});
 				this.history.slice(250); // make sure history does not get too large
-				app.services.storage.set("anyRequestHistory", this.history);
+				this.prefs.set( "anyRequest-history", this.history );
 				this.el.find("UL.uiAnyRequest-history")
 					.empty()
 					.append($( { tag: "UL", children: this.history.map(this._historyItem_template, this) }).children())
@@ -2819,7 +2888,7 @@
 			}
 			this.prevData = data;
 		},
-		_validateJson_handler: function(jEv) {
+		_validateJson_handler: function( ev ) {
 			/* if the textarea is empty, we replace its value by an empty JSON object : "{}" and the request goes on as usual */
 			var jsonData = this.dataEl.val().trim();
 			var j;
@@ -2839,12 +2908,9 @@
 			}
 			return true;
 		},
-		_showSection_handler: function(jEv) {
-			$(jEv.target).closest(".sidebar-section").children(".sidebar-subbody").slideToggle(200);
-		},
-		_historyClick_handler: function(jEv) {
-			var item = $(jEv.target).closest("LI").data("item");
-			this.setHistoryItem(item);
+		_historyClick_handler: function( ev ) {
+			var item = $( ev.target ).closest( "LI" ).data( "item" );
+			this.setHistoryItem( item );
 		},
 		_main_template: function() {
 			return { tag: "DIV", cls: "anyRequest", children: [
@@ -2861,7 +2927,7 @@
 							{ tag: "INPUT", type: "text", name: "base_uri", value: this.config.cluster.config.base_uri },
 							{ tag: "BR" },
 							{ tag: "INPUT", type: "text", name: "path", value: this.config.path },
-							{ tag: "SELECT", name: "method", children: ["POST", "GET", "PUT", "DELETE"].map(ut.option_template) },
+							{ tag: "SELECT", name: "method", children: ["POST", "GET", "PUT", "HEAD", "DELETE"].map(ut.option_template) },
 							{ tag: "TEXTAREA", name: "body", rows: 20, text: JSON.stringify(this.config.query) },
 							{ tag: "BUTTON", css: { cssFloat: "right" }, type: "button", children: [ { tag: "B", text: i18n.text("AnyRequest.Request") } ], onclick: this._request_handler },
 							{ tag: "BUTTON", type: "button", text: i18n.text("AnyRequest.ValidateJSON"), onclick: this._validateJson_handler },
@@ -2924,7 +2990,7 @@
 	
 })( this.jQuery, this.app, this.i18n, this.Raphael );
 
-(function( app, i18n ) {
+(function( app, i18n, joey ) {
 
 	var ui = app.ns("ui");
 	var ut = app.ns("ut");
@@ -2933,6 +2999,7 @@
 		defaults: {
 			interactive: true,
 			aliasRenderer: "list",
+			scaleReplicas: 1,
 			cluster: null,
 			data: null
 		},
@@ -2945,6 +3012,7 @@
 				"list": this._aliasRender_template_list,
 				"full": this._aliasRender_template_full
 			}[ this.config.aliasRenderer ];
+			this._styleSheetEl = joey({ tag: "STYLE", text: ".uiNodesView-nullReplica, .uiNodesView-replica { zoom: " + this.config.scaleReplicas + " }" });
 			this.el = $( this._main_template( this.config.data.cluster, this.config.data.indices ) );
 		},
 
@@ -3189,6 +3257,7 @@
 		},
 		_main_template: function(cluster, indices) {
 			return { tag: "TABLE", cls: "table uiNodesView", children: [
+				this._styleSheetEl,
 				{ tag: "THEAD", children: [ { tag: "TR", children: indices.map(this._indexHeader_template, this) } ] },
 				this._aliasRenderFunction( cluster, indices ),
 				{ tag: "TBODY", children: cluster.nodes.map(this._node_template, this) }
@@ -3197,11 +3266,12 @@
 
 	});
 
-})( this.app, this.i18n );
+})( this.app, this.i18n, this.joey );
 
 (function( $, app, i18n ) {
 
 	var ui = app.ns("ui");
+	var services = app.ns("services");
 
 	// ( master ) master = true, data = true 
 	// ( coordinator ) master = true, data = false
@@ -3240,6 +3310,12 @@
 		}
 	}
 
+	var NODE_SORT_TYPES = {
+		"Sort.ByName": nodeSort_name,
+		"Sort.ByAddress": nodeSort_addr,
+		"Sort.ByType": nodeSort_type
+	};
+
 	function nodeFilter_none( a ) {
 		return true;
 	}
@@ -3256,6 +3332,7 @@
 		init: function() {
 			this._super();
 			this.cluster = this.config.cluster;
+			this.prefs = services.Preferences.instance();
 			this._clusterState = this.config.clusterState;
 			this._clusterState.on("data", this.draw_handler );
 			this._refreshButton = new ui.RefreshButton({
@@ -3266,23 +3343,23 @@
 					}
 				}.bind( this )
 			});
-			this._nodeSort = nodeSort_name;
+			var nodeSortPref = this.prefs.get("clusterOverview-nodeSort") || Object.keys(NODE_SORT_TYPES)[0];
+			this._nodeSort = NODE_SORT_TYPES[ nodeSortPref ];
 			this._nodeSortMenu = new ui.MenuButton({
-				label: "Sort Cluster",
+				label: i18n.text( "Preference.SortCluster" ),
 				menu: new ui.SelectMenuPanel({
-					value: this._nodeSort,
-					items: [
-						{ text: "By Name", value: nodeSort_name },
-						{ text: "By Address", value: nodeSort_addr },
-						{ text: "By Type", value: nodeSort_type }
-					],
+					value: nodeSortPref,
+					items: Object.keys( NODE_SORT_TYPES ).map( function( k ) {
+						return { text: i18n.text( k ), value: k };
+					}),
 					onSelect: function( panel, event ) {
-						this._nodeSort = event.value;
+						this._nodeSort = NODE_SORT_TYPES[ event.value ];
+						this.prefs.set("clusterOverview-nodeSort", event.value );
 						this.draw_handler();
 					}.bind(this)
 				})
 			});
-			this._aliasRenderer = "full";
+			this._aliasRenderer = this.prefs.get( "clusterOverview-aliasRender" ) || "full";
 			this._aliasMenu = new ui.MenuButton({
 				label: "View Aliases",
 				menu: new ui.SelectMenuPanel({
@@ -3293,13 +3370,18 @@
 						{ value: "none", text: "None" } ],
 					onSelect: function( panel, event ) {
 						this._aliasRenderer = event.value;
+						this.prefs.set( "clusterOverview-aliasRender", this._aliasRenderer );
 						this.draw_handler();
 					}.bind(this)
 				})
 			});
 			this._indexFilter = new ui.TextField({
+				value: this.prefs.get("clusterOverview-indexFilter"),
 				placeholder: "Index Filter",
-				onchange: this.draw_handler
+				onchange: function( indexFilter ) {
+					this.prefs.set("clusterOverview-indexFilter", indexFilter.val() );
+					this.draw_handler();
+				}.bind(this)
 			});
 			this.el = $(this._main_template());
 			this.tablEl = this.el.find(".uiClusterOverview-table");
@@ -3580,6 +3662,7 @@
 (function( $, app, i18n ) {
 
 	var ui = app.ns("ui");
+	var services = app.ns("services");
 
 	ui.ClusterConnect = ui.AbstractWidget.extend({
 		defaults: {
@@ -3587,15 +3670,15 @@
 		},
 		init: function() {
 			this._super();
+			this.prefs = services.Preferences.instance();
 			this.cluster = this.config.cluster;
-			this.el = $(this._main_template());
+			this.el = $.joey(this._main_template());
 			this.cluster.get( "", this._node_handler );
-			this.cluster.get( "_cluster/health", this._health_handler );
 		},
 		
 		_node_handler: function(data) {
 			if(data) {
-				localStorage["base_uri"] = this.cluster.base_uri;
+				this.prefs.set("app-base_uri", this.cluster.base_uri);
 			}
 		},
 		
@@ -3606,9 +3689,9 @@
 		
 		_main_template: function() {
 			return { tag: "SPAN", cls: "uiClusterConnect", children: [
-				{ tag: "INPUT", type: "text", cls: "uiClusterConnect-uri", onkeyup: function( jEv ) {
-					if(jEv.which === 13) {
-						jEv.preventDefault();
+				{ tag: "INPUT", type: "text", cls: "uiClusterConnect-uri", onkeyup: function( ev ) {
+					if(ev.which === 13) {
+						ev.preventDefault();
 						this._reconnect_handler();
 					}
 				}.bind(this), id: this.id("baseUri"), value: this.cluster.base_uri },
@@ -4009,13 +4092,13 @@
 					items: menuItems
 				})
 			});
-			this.el = $( this._main_template() );
+			this.el = $.joey( this._main_template() );
 			this.nameEl = this.el.find(".uiHeader-name");
 			this.statEl = this.el.find(".uiHeader-status");
 			this._clusterState = this.config.clusterState;
 			this._clusterState.on("data", function( state ) {
 				var shards = state.status._shards;
-				var colour = shards.failed > 0 ? "red" : ( shards.total > shards.successful ? "yellow" : "green" );
+				var colour = state.clusterHealth.status;
 				var name = state.clusterState.cluster_name;
 				this.nameEl.text( name );
 				this.statEl
@@ -4163,11 +4246,12 @@
 
 	app.App = ui.AbstractWidget.extend({
 		defaults: {
-			base_uri: localStorage["base_uri"] || "http://localhost:9200/"   // the default Elasticsearch host
+			base_uri: null
 		},
 		init: function(parent) {
 			this._super();
-			this.base_uri = this.config.base_uri;
+			this.prefs = services.Preferences.instance();
+			this.base_uri = this.config.base_uri || this.prefs.get("app-base_uri") || "http://localhost:9200";
 			if( this.base_uri.charAt( this.base_uri.length - 1 ) !== "/" ) {
 				// XHR request fails if the URL is not ending with a "/"
 				this.base_uri += "/";
@@ -4186,78 +4270,79 @@
 			});
 
 			this._header = new ui.Header({ cluster: this.cluster, clusterState: this._clusterState });
-			this.$body = $( this._body_template() );
-			this.el = $(this._main_template());
+			this.$body = $.joey( this._body_template() );
+			this.el = $.joey(this._main_template());
 			this.attach( parent );
 			this.instances = {};
 			this.el.find(".uiApp-headerMenuItem:first").click();
 			if( this.config.dashboard ) {
 				if( this.config.dashboard === "cluster" ) {
 					var page = this.instances["ClusterOverview"];
-					page._redrawValue = 5000;
-					page.redraw("reset");
+					page._refreshButton.set( 5000 );
 				}
 			}
 		},
-		
-		show: function(type, config, jEv) {
-			if(! this.instances[type]) {
-				var page = this.instances[type] = new ui[type]( config );
-				this.$body.append( page );
-			}
-			$(jEv.target).closest("DIV.uiApp-headerMenuItem").addClass("active").siblings().removeClass("active");
-			for(var p in this.instances) {
-				this.instances[p][ p === type ? "show" : "hide" ]();
-			}
-		},
 
-		showNew: function(type, config, jEv, tab_text) {
-			var that = this,
-				type_name = '',
-				type_index = 0,
-				page, $tab;
-
-			// Loop through until we find an unused type name
-			while (type_name === '') {
-				type_index++;
-				if (!this.instances[type + type_index.toString()]) {
-					// Found an available type name, so put it together and add it to the UI
-					type_name = type + type_index.toString();
-					page = this.instances[type_name] = new ui[type](config);
-					this.$body.append( page );
-				}
-			}
-
-			// Make sure we have text for the tab
-			if (tab_text) {
-				tab_text += ' ' + type_index.toString();
+		navigateTo: function( type, config, ev ) {
+			if( ev.target.classList.contains( "uiApp-headerNewMenuItem" ) ) {
+				this.showNew( type, config, ev );
 			} else {
-				tab_text = type_name;
+				var ref = type + "0";
+				if(! this.instances[ ref ]) {
+					this.createPage( type, 0, config );
+				}
+				this.show( ref, ev );
+			}
+		},
+
+		createPage: function( type, id, config ) {
+			var page = this.instances[ type + id ] = new ui[ type ]( config );
+			this.$body.append( page );
+			return page;
+		},
+
+		show: function( ref, ev ) {
+			$( ev.target ).closest("DIV.uiApp-headerMenuItem").addClass("active").siblings().removeClass("active");
+			for(var p in this.instances) {
+				this.instances[p][ p === ref ? "show" : "hide" ]();
+			}
+		},
+
+		showNew: function( type, config, jEv ) {
+			var ref, page, $tab,
+				type_index = 0;
+
+			while ( ! page ) {
+				ref = type + ( ++type_index );
+				if (! ( ref in this.instances ) ) {
+					page = this.createPage( type, type_index, config );
+				}
 			}
 
 			// Add the tab and its click handlers
-			$tab = this.newTab(tab_text, {
-				click: function (jEv) {
-					that.show(type_name, config, jEv);
-				},
-				close_click: function (jEv) {
-					$tab.remove();
-					page.remove();
-					delete that.instances[type_name];
-				}
+			$tab = $.joey({
+				tag: "DIV",
+				cls: "uiApp-headerMenuItem pull-left",
+				text: i18n.text("Nav." + type ) + " " + type_index,
+				onclick: function( ev ) { this.show( ref, ev ); }.bind(this),
+				children: [
+					{ tag: "A", text: " [-]", onclick: function (ev) {
+						$tab.remove();
+						page.remove();
+						delete this.instances[ ref ];
+					}.bind(this) }
+				]
 			});
-			
-			// Click the new tab to make it show
-			$tab.trigger('click');
+
+			$('.uiApp-headerMenu').append( $tab );
+			$tab.trigger("click");
 		},
 
-		_openAnyRequest_handler: function(jEv) { this.show("AnyRequest", { cluster: this.cluster }, jEv); },
-		_openNewAnyRequest_handler: function(jEv) { this.showNew("AnyRequest", { cluster: this.cluster }, jEv, i18n.text("Nav.AnyRequest")); return false; },
-		_openStructuredQuery_handler: function(jEv) { this.show("StructuredQuery", { cluster: this.cluster }, jEv); },
-		_openNewStructuredQuery_handler: function(jEv) { this.showNew("StructuredQuery", { cluster: this.cluster }, jEv, i18n.text("Nav.StructuredQuery")); return false; },
-		_openBrowser_handler: function(jEv) { this.show("Browser", { cluster: this.cluster }, jEv);  },
-		_openClusterOverview_handler: function(jEv) { this.show("ClusterOverview", { cluster: this.cluster, clusterState: this._clusterState }, jEv); },
-		_openIndexOverview_handler: function(jEv) { this.show("IndexOverview", { cluster: this.cluster, clusterState: this._clusterState }, jEv); },
+		_openAnyRequest_handler: function(ev) { this.navigateTo("AnyRequest", { cluster: this.cluster }, ev ); },
+		_openStructuredQuery_handler: function(ev) { this.navigateTo("StructuredQuery", { cluster: this.cluster }, ev ); },
+		_openBrowser_handler: function(ev) { this.navigateTo("Browser", { cluster: this.cluster }, ev );  },
+		_openClusterOverview_handler: function(ev) { this.navigateTo("ClusterOverview", { cluster: this.cluster, clusterState: this._clusterState }, ev ); },
+		_openIndexOverview_handler: function(ev) { this.navigateTo("IndexOverview", { cluster: this.cluster, clusterState: this._clusterState }, ev ); },
 
 		_body_template: function() { return (
 			{ tag: "DIV", id: this.id("body"), cls: "uiApp-body" }
@@ -4272,33 +4357,15 @@
 						{ tag: "DIV", cls: "uiApp-headerMenuItem pull-left", text: i18n.text("Nav.Indices"), onclick: this._openIndexOverview_handler },
 						{ tag: "DIV", cls: "uiApp-headerMenuItem pull-left", text: i18n.text("Nav.Browser"), onclick: this._openBrowser_handler },
 						{ tag: "DIV", cls: "uiApp-headerMenuItem pull-left", text: i18n.text("Nav.StructuredQuery"), onclick: this._openStructuredQuery_handler, children: [
-							{ tag: "A", text: ' [+]', onclick: this._openNewStructuredQuery_handler}
+							{ tag: "A", cls: "uiApp-headerNewMenuItem ", text: ' [+]' }
 						] },
 						{ tag: "DIV", cls: "uiApp-headerMenuItem pull-left", text: i18n.text("Nav.AnyRequest"), onclick: this._openAnyRequest_handler, children: [
-							{ tag: "A", text: ' [+]', onclick: this._openNewAnyRequest_handler}
+							{ tag: "A", cls: "uiApp-headerNewMenuItem ", text: ' [+]' }
 						] },
 					]}
 				]},
 				this.$body
 			]};
-		},
-
-		newTab: function(text, events) {
-			var $el = $({tag: 'DIV', cls: 'uiApp-headerMenuItem pull-left', text: text, children: [
-				{tag: 'A', text: ' [-]'}
-			]});
-
-			// Apply the events to the tab as given
-			$.each(events || {}, function (event_name, fn) {
-				if (event_name === 'close_click') {
-					$('a',$el).bind('click', fn);
-				} else {
-					$el.bind(event_name, fn);
-				}
-			});
-
-			$('.uiApp-headerMenu').append($el);
-			return $el;
 		}
 		
 	});

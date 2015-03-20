@@ -16,6 +16,7 @@ exports.srcJs = [
 	'src/app/ux/class.js',
 	'src/app/ux/templates/templates.js',
 	'src/app/ux/observable.js',
+	'src/app/ux/singleton.js',
 	'src/app/ux/dragdrop.js',
 	'src/app/ux/fieldCollection.js',
 
@@ -28,7 +29,7 @@ exports.srcJs = [
 	'src/app/data/queryDataSourceInterface.js',
 	'src/app/data/boolQuery.js',
 
-	'src/app/services/storage.js',
+	'src/app/services/preferences/preferences.js',
 	'src/app/services/cluster/cluster.js',
 	'src/app/services/clusterState/clusterState.js',
 

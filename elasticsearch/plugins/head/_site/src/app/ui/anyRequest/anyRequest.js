@@ -2,6 +2,7 @@
 
 	var ui = app.ns("ui");
 	var ut = app.ns("ut");
+	var services = app.ns("services");
 
 	ui.AnyRequest = ui.Page.extend({
 		defaults: {
@@ -12,8 +13,9 @@
 		},
 		init: function(parent) {
 			this._super();
-			this.history = app.services.storage.get("anyRequestHistory") || [ { type: "POST", path: this.config.path, query : JSON.stringify(this.config.query), transform: this.config.transform } ];
-			this.el = $(this._main_template());
+			this.prefs = services.Preferences.instance();
+			this.history = this.prefs.get("anyRequest-history") || [ { type: "POST", path: this.config.path, query : JSON.stringify(this.config.query), transform: this.config.transform } ];
+			this.el = $.joey(this._main_template());
 			this.base_uriEl = this.el.find("INPUT[name=base_uri]");
 			this.pathEl = this.el.find("INPUT[name=path]");
 			this.typeEl = this.el.find("SELECT[name=method]");
@@ -36,7 +38,7 @@
 			this.dataEl.val(item.query);
 			this.transformEl.val(item.transform);
 		},
-		_request_handler: function(jEv) {
+		_request_handler: function( ev ) {
 			if(! this._validateJson_handler()) {
 				return;
 			}
@@ -45,7 +47,7 @@
 					query = JSON.stringify(JSON.parse(this.dataEl.val())),
 					transform = this.transformEl.val(),
 					base_uri = this.base_uriEl.val();
-			if(jEv && jEv.originalEvent) { // if the user click request
+			if( ev ) { // if the user click request
 				if(this.timer) {
 					window.clearTimeout(this.timer); // stop any cron jobs
 				}
@@ -70,7 +72,7 @@
 					transform: transform
 				});
 				this.history.slice(250); // make sure history does not get too large
-				app.services.storage.set("anyRequestHistory", this.history);
+				this.prefs.set( "anyRequest-history", this.history );
 				this.el.find("UL.uiAnyRequest-history")
 					.empty()
 					.append($( { tag: "UL", children: this.history.map(this._historyItem_template, this) }).children())
@@ -130,7 +132,7 @@
 			}
 			this.prevData = data;
 		},
-		_validateJson_handler: function(jEv) {
+		_validateJson_handler: function( ev ) {
 			/* if the textarea is empty, we replace its value by an empty JSON object : "{}" and the request goes on as usual */
 			var jsonData = this.dataEl.val().trim();
 			var j;
@@ -150,12 +152,9 @@
 			}
 			return true;
 		},
-		_showSection_handler: function(jEv) {
-			$(jEv.target).closest(".sidebar-section").children(".sidebar-subbody").slideToggle(200);
-		},
-		_historyClick_handler: function(jEv) {
-			var item = $(jEv.target).closest("LI").data("item");
-			this.setHistoryItem(item);
+		_historyClick_handler: function( ev ) {
+			var item = $( ev.target ).closest( "LI" ).data( "item" );
+			this.setHistoryItem( item );
 		},
 		_main_template: function() {
 			return { tag: "DIV", cls: "anyRequest", children: [
@@ -172,7 +171,7 @@
 							{ tag: "INPUT", type: "text", name: "base_uri", value: this.config.cluster.config.base_uri },
 							{ tag: "BR" },
 							{ tag: "INPUT", type: "text", name: "path", value: this.config.path },
-							{ tag: "SELECT", name: "method", children: ["POST", "GET", "PUT", "DELETE"].map(ut.option_template) },
+							{ tag: "SELECT", name: "method", children: ["POST", "GET", "PUT", "HEAD", "DELETE"].map(ut.option_template) },
 							{ tag: "TEXTAREA", name: "body", rows: 20, text: JSON.stringify(this.config.query) },
 							{ tag: "BUTTON", css: { cssFloat: "right" }, type: "button", children: [ { tag: "B", text: i18n.text("AnyRequest.Request") } ], onclick: this._request_handler },
 							{ tag: "BUTTON", type: "button", text: i18n.text("AnyRequest.ValidateJSON"), onclick: this._validateJson_handler },

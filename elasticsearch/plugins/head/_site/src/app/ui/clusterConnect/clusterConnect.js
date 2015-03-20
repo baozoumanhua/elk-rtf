@@ -1,6 +1,7 @@
 (function( $, app, i18n ) {
 
 	var ui = app.ns("ui");
+	var services = app.ns("services");
 
 	ui.ClusterConnect = ui.AbstractWidget.extend({
 		defaults: {
@@ -8,15 +9,15 @@
 		},
 		init: function() {
 			this._super();
+			this.prefs = services.Preferences.instance();
 			this.cluster = this.config.cluster;
-			this.el = $(this._main_template());
+			this.el = $.joey(this._main_template());
 			this.cluster.get( "", this._node_handler );
-			this.cluster.get( "_cluster/health", this._health_handler );
 		},
 		
 		_node_handler: function(data) {
 			if(data) {
-				localStorage["base_uri"] = this.cluster.base_uri;
+				this.prefs.set("app-base_uri", this.cluster.base_uri);
 			}
 		},
 		
@@ -27,9 +28,9 @@
 		
 		_main_template: function() {
 			return { tag: "SPAN", cls: "uiClusterConnect", children: [
-				{ tag: "INPUT", type: "text", cls: "uiClusterConnect-uri", onkeyup: function( jEv ) {
-					if(jEv.which === 13) {
-						jEv.preventDefault();
+				{ tag: "INPUT", type: "text", cls: "uiClusterConnect-uri", onkeyup: function( ev ) {
+					if(ev.which === 13) {
+						ev.preventDefault();
 						this._reconnect_handler();
 					}
 				}.bind(this), id: this.id("baseUri"), value: this.cluster.base_uri },

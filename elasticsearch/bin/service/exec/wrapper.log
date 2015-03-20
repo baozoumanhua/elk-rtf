@@ -1,0 +1,4 @@
+FATAL  | wrapper  | 2015/03/19 18:43:37 | Unable to open configuration file: /Users/liuyuyu/program/projects/elk-rtf/elasticsearch/bin/service/elasticsearch conf (No such file or directory)
+FATAL  | wrapper  | 2015/03/19 18:43:37 |   Current working directory: /Users/liuyuyu/program/projects/elk-rtf/elasticsearch/bin/service/exec
+FATAL  | wrapper  | 2015/03/19 18:43:55 | Unable to open configuration file: /Users/liuyuyu/program/projects/elk-rtf/elasticsearch/bin/service/elasticsearch conf (No such file or directory)
+FATAL  | wrapper  | 2015/03/19 18:43:55 |   Current working directory: /Users/liuyuyu/program/projects/elk-rtf/elasticsearch/bin/service/exec

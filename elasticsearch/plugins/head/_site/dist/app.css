@@ -370,15 +370,9 @@ UL.uiJsonPretty-array LI { padding: 0; margin: 0; }
 .expando.uiJsonPretty-minimised > SPAN.uiJsonPretty-name:before { content: "\25ba\a0"; top: 0; }
 .uiJsonPretty-minimised > UL SPAN.uiJsonPretty-name:before,
 .expando .uiJsonPretty-minimised > UL SPAN.uiJsonPretty-name:before { content: ""; }
-UL.uiJsonPretty-object LI:after,
-UL.uiJsonPretty-array LI:after { content: ','; }
-UL.uiJsonPretty-object LI:last-child:after,
-UL.uiJsonPretty-array LI:last-child:after { content: ''; }
 SPAN.uiJsonPretty-string,
 SPAN.uiJsonPretty-string A { color: green; }
 SPAN.uiJsonPretty-string A { text-decoration: underline;}
-SPAN.uiJsonPretty-string:before { content: '"'; }
-SPAN.uiJsonPretty-string:after { content: '"'; }
 SPAN.uiJsonPretty-number { color: blue; }
 SPAN.uiJsonPretty-null { color: red; }
 SPAN.uiJsonPretty-boolean { color: purple; }
@@ -606,20 +600,24 @@ SPAN.uiJsonPretty-boolean { color: purple; }
 
 .uiNodesView-nullReplica,
 .uiNodesView-replica {
+	box-sizing: border-box;
 	cursor: pointer;
 	float: left;
 	height: 40px;
-	width: 31px;
+	width: 35px;
 	margin: 4px;
 	border: 2px solid #444;
+	padding: 2px;
 	font-size: 32px;
+	line-height: 32px;
 	text-align: center;
 	letter-spacing: -5px;
 	text-indent: -7px;
 }
+
 .uiNodesView-replica.primary {
 	border-width: 4px;
-	margin: 2px;
+	line-height: 29px;
 }
 
 .uiNodesView-nullReplica {
@@ -701,3 +699,6 @@ SPAN.uiJsonPretty-boolean { color: purple; }
 	padding: 51px 0px 0px 0px;
 }
 
+.uiApp-headerNewMenuItem {
+	color: blue;
+}

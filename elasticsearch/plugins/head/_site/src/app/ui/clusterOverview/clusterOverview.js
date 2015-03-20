@@ -1,6 +1,7 @@
 (function( $, app, i18n ) {
 
 	var ui = app.ns("ui");
+	var services = app.ns("services");
 
 	// ( master ) master = true, data = true 
 	// ( coordinator ) master = true, data = false
@@ -39,6 +40,12 @@
 		}
 	}
 
+	var NODE_SORT_TYPES = {
+		"Sort.ByName": nodeSort_name,
+		"Sort.ByAddress": nodeSort_addr,
+		"Sort.ByType": nodeSort_type
+	};
+
 	function nodeFilter_none( a ) {
 		return true;
 	}
@@ -55,6 +62,7 @@
 		init: function() {
 			this._super();
 			this.cluster = this.config.cluster;
+			this.prefs = services.Preferences.instance();
 			this._clusterState = this.config.clusterState;
 			this._clusterState.on("data", this.draw_handler );
 			this._refreshButton = new ui.RefreshButton({
@@ -65,23 +73,23 @@
 					}
 				}.bind( this )
 			});
-			this._nodeSort = nodeSort_name;
+			var nodeSortPref = this.prefs.get("clusterOverview-nodeSort") || Object.keys(NODE_SORT_TYPES)[0];
+			this._nodeSort = NODE_SORT_TYPES[ nodeSortPref ];
 			this._nodeSortMenu = new ui.MenuButton({
-				label: "Sort Cluster",
+				label: i18n.text( "Preference.SortCluster" ),
 				menu: new ui.SelectMenuPanel({
-					value: this._nodeSort,
-					items: [
-						{ text: "By Name", value: nodeSort_name },
-						{ text: "By Address", value: nodeSort_addr },
-						{ text: "By Type", value: nodeSort_type }
-					],
+					value: nodeSortPref,
+					items: Object.keys( NODE_SORT_TYPES ).map( function( k ) {
+						return { text: i18n.text( k ), value: k };
+					}),
 					onSelect: function( panel, event ) {
-						this._nodeSort = event.value;
+						this._nodeSort = NODE_SORT_TYPES[ event.value ];
+						this.prefs.set("clusterOverview-nodeSort", event.value );
 						this.draw_handler();
 					}.bind(this)
 				})
 			});
-			this._aliasRenderer = "full";
+			this._aliasRenderer = this.prefs.get( "clusterOverview-aliasRender" ) || "full";
 			this._aliasMenu = new ui.MenuButton({
 				label: "View Aliases",
 				menu: new ui.SelectMenuPanel({
@@ -92,13 +100,18 @@
 						{ value: "none", text: "None" } ],
 					onSelect: function( panel, event ) {
 						this._aliasRenderer = event.value;
+						this.prefs.set( "clusterOverview-aliasRender", this._aliasRenderer );
 						this.draw_handler();
 					}.bind(this)
 				})
 			});
 			this._indexFilter = new ui.TextField({
+				value: this.prefs.get("clusterOverview-indexFilter"),
 				placeholder: "Index Filter",
-				onchange: this.draw_handler
+				onchange: function( indexFilter ) {
+					this.prefs.set("clusterOverview-indexFilter", indexFilter.val() );
+					this.draw_handler();
+				}.bind(this)
 			});
 			this.el = $(this._main_template());
 			this.tablEl = this.el.find(".uiClusterOverview-table");
