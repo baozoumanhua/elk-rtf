@@ -28,14 +28,28 @@ kibana: 4.0.1
 	cd elasticsearch
 	./bin/service/elasticsearch console
 
-运行logstash以及kibana
----------------------
-现在logstash已经和kibana集成在一起了，提供了很方便的命令行工具，具体可参考[logstash-10-minute-walkthrough](http://logstash.net/docs/1.4.2/tutorials/10-minute-walkthrough/)。
+运行logstash以及kibana3
+----------------------
+现在logstash集成了kibana3，提供了很方便的命令行工具，具体可参考[logstash-10-minute-walkthrough](http://logstash.net/docs/1.4.2/tutorials/10-minute-walkthrough/)。
 
 命令：
 
 	cd logstash
 	./bin/logstash agent -f ../configs/logstash-indexer.conf
+	
+同时启动kibana3：
+	
+	./bin/logstash agent -f ../configs/logstash-indexer.conf web
+	
+运行kibana4
+--------------
+kibana4是基于node.js的全新的web客户端，作为web service独立运行。
+
+环境中的2个kibana4，kibana-4-darwin-x64 是macosx的版本，kibana-4-linux-x64 是linux的版本。
+
+运行命令：`./bin/kibana`
+
+在linux下，以后台方式静默运行：`./bin/kibana -q &`
 
 配置文件
 ------
