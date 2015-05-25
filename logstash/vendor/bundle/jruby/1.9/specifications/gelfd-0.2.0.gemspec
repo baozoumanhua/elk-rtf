@@ -6,6 +6,7 @@ Gem::Specification.new do |s|
   s.version = "0.2.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
+  s.require_paths = ["lib"]
   s.authors = ["John E. Vincent"]
   s.date = "2011-11-11"
   s.description = "Standalone implementation of the Graylog Extended Log Format"
@@ -13,10 +14,11 @@ Gem::Specification.new do |s|
   s.executables = ["gelfd"]
   s.files = ["bin/gelfd"]
   s.homepage = ""
-  s.require_paths = ["lib"]
   s.rubyforge_project = "gelfd"
-  s.rubygems_version = "2.1.9"
+  s.rubygems_version = "2.4.5"
   s.summary = "Pure ruby gelf server and decoding library"
+
+  s.installed_by_version = "2.4.5" if s.respond_to? :installed_by_version
 
   if s.respond_to? :specification_version then
     s.specification_version = 3

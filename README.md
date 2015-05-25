@@ -10,7 +10,7 @@ elk(Elasticsearch, Logstash and Kibana) ready to fly
 --------
 elasticsearch: 1.4.4
 
-logstash: 1.4.2
+logstash: 1.5.0
 
 kibana: 4.0.1
 

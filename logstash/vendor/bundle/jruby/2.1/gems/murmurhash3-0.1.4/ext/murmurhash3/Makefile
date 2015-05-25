@@ -1,2 +1,0 @@
-install:
-	#nothing to build

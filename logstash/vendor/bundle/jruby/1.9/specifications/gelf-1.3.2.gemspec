@@ -6,6 +6,7 @@ Gem::Specification.new do |s|
   s.version = "1.3.2"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
+  s.require_paths = ["lib"]
   s.authors = ["Alexey Palazhchenko", "Lennart Koopmann"]
   s.date = "2011-12-02"
   s.description = "Library to send GELF messages to Graylog2 logging server. Supports plain-text, GELF messages and exceptions."
@@ -13,9 +14,10 @@ Gem::Specification.new do |s|
   s.extra_rdoc_files = ["LICENSE", "README.rdoc"]
   s.files = ["LICENSE", "README.rdoc"]
   s.homepage = "http://github.com/Graylog2/gelf-rb"
-  s.require_paths = ["lib"]
-  s.rubygems_version = "2.1.9"
+  s.rubygems_version = "2.4.5"
   s.summary = "Library to send GELF messages to Graylog2 logging server."
+
+  s.installed_by_version = "2.4.5" if s.respond_to? :installed_by_version
 
   if s.respond_to? :specification_version then
     s.specification_version = 3
